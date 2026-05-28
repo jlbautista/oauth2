@@ -65,6 +65,52 @@ body {
   gap: 0.7rem;
 }
 
+.btn-provider {
+  display: flex;
+  width: 100%;
+  padding: 0.6rem 1.4rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.provider-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-google {
+  background: #ffffff;
+  color: #1f1f1f;
+  border-color: #dadce0;
+}
+
+.btn-google:hover {
+  background: #f7f8f8;
+  opacity: 1;
+}
+
+.btn-github {
+  background: #24292f;
+  color: #f6f8fa;
+  border-color: #3d444d;
+}
+
+.btn-github:hover {
+  background: #2f363d;
+  opacity: 1;
+}
+
 /* ── Botón ────────────────────────────────────────────────────────── */
 .btn {
   display: block;
