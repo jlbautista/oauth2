@@ -17,6 +17,8 @@ if (!supabaseUrl || !supabasePublishableKey) {
 // Este cliente se reutiliza en toda la aplicación.
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
+    // PKCE devuelve un "code" en query string, ideal para callback en servidor.
+    flowType: "pkce",
     // Deshabilita la persistencia automática de la sesión en el servidor,
     // ya que el servidor no tiene acceso al localStorage del navegador.
     persistSession: false,

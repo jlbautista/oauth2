@@ -9,9 +9,12 @@
   <body>
     <main class="card">
       <h1>OAuth2 + Supabase</h1>
-      <p>Inicia sesión usando tu cuenta del proveedor configurado.</p>
-      <!-- El href apunta a la ruta del servidor que inicia el flujo OAuth2 -->
-      <a href="/auth/login" class="btn">Iniciar sesión</a>
+      <p>Inicia sesión con credenciales válidas de GitHub o Google.</p>
+      <div class="auth-options">
+        <!-- Cada botón indica explícitamente el proveedor OAuth -->
+        <a href="/auth/login?provider=google" class="btn">Continuar con Google</a>
+        <a href="/auth/login?provider=github" class="btn btn-outline">Continuar con GitHub</a>
+      </div>
     </main>
   </body>
 </html>

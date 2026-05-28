@@ -5,12 +5,12 @@ Ejemplo mínimo de autenticación OAuth2 usando **Express**, **TypeScript** y el
 ## Flujo OAuth2
 
 ```
-Usuario → /auth/login → Supabase → Proveedor (GitHub/Google/…)
+Usuario → /auth/login?provider=github|google → Supabase → Proveedor
                                          ↓
 Usuario ← /profile   ← /auth/callback ←─┘
 ```
 
-1. El usuario hace clic en "Iniciar sesión".
+1. El usuario elige GitHub o Google en la pantalla de inicio.
 2. El servidor redirige a Supabase, que a su vez redirige al proveedor OAuth2.
 3. Tras autorizar, el proveedor redirige a `/auth/callback` con un `code`.
 4. El servidor intercambia el `code` por una sesión (access token).
@@ -36,12 +36,17 @@ Usuario ← /profile   ← /auth/callback ←─┘
 ### 1. Supabase
 
 1. Crea un proyecto en [supabase.com](https://supabase.com).
-2. Ve a **Authentication → Providers** y habilita el proveedor deseado (ej. GitHub).
-3. En la configuración del proveedor, agrega como **Redirect URL** permitida:
+2. Ve a **Authentication → Providers** y habilita **GitHub** y **Google**.
+3. En cada proveedor, carga sus credenciales válidas (**Client ID** y **Client Secret**).
+4. En la configuración de cada proveedor (GitHub/Google), usa como callback de OAuth la URL de Supabase:
+   ```
+   https://<tu-project-ref>.supabase.co/auth/v1/callback
+   ```
+5. Copia tu **Project URL** y **publishable key** desde **Settings → API Keys**.
+6. En **Authentication → URL Configuration**, agrega como Redirect URL de tu app:
    ```
    http://localhost:3000/auth/callback
    ```
-4. Copia tu **Project URL** y **publishable key** desde **Settings → API Keys**.
 
 ### 2. Variables de entorno
 
@@ -76,7 +81,8 @@ npm start
 | Ruta | Descripción |
 |------|-------------|
 | `GET /` | Página de inicio con el botón de login |
-| `GET /auth/login` | Inicia el flujo OAuth2 |
+| `GET /auth/login?provider=google` | Inicia OAuth2 con Google |
+| `GET /auth/login?provider=github` | Inicia OAuth2 con GitHub |
 | `GET /auth/callback` | Punto de retorno del proveedor |
 | `GET /profile` | Perfil del usuario (requiere sesión) |
 | `GET /auth/logout` | Cierra la sesión |

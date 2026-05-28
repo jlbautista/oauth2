@@ -9,6 +9,15 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+type OAuthProvider = "github" | "google" | "discord";
+
+const selectableProviders = new Set<OAuthProvider>(["github", "google"]);
+
+function parseProvider(rawProvider: unknown): OAuthProvider | null {
+  if (typeof rawProvider !== "string") return null;
+  const normalized = rawProvider.toLowerCase() as OAuthProvider;
+  return selectableProviders.has(normalized) ? normalized : null;
+}
 
 // ─── Middlewares ──────────────────────────────────────────────────────────────
 
@@ -38,14 +47,29 @@ const authLimiter = rateLimit({
  * Inicia el flujo OAuth2: redirige al usuario a la página de autorización
  * del proveedor (ej. GitHub, Google) a través de Supabase.
  *
- * El proveedor está configurado en la variable de entorno OAUTH_PROVIDER
- * (ej. "github", "google", "discord").
+ * Puedes elegir el proveedor con el query param ?provider=github|google.
+ * Si no se envía query param, usa el proveedor por defecto de OAUTH_PROVIDER.
  */
-app.get("/auth/login", authLimiter, async (_req: Request, res: Response) => {
-  const provider = (process.env.OAUTH_PROVIDER || "github") as
-    | "github"
-    | "google"
-    | "discord";
+app.get("/auth/login", authLimiter, async (req: Request, res: Response) => {
+  const queryProvider = parseProvider(req.query.provider);
+
+  if (req.query.provider && !queryProvider) {
+    res.status(400).send("Proveedor no soportado. Usa ?provider=github o ?provider=google.");
+    return;
+  }
+
+  const defaultProvider = parseProvider(process.env.OAUTH_PROVIDER) || "google";
+  const provider = queryProvider || defaultProvider;
+
+  // Guardamos el proveedor seleccionado para poder mostrarlo correctamente
+  // al finalizar el callback OAuth, incluso con cuentas enlazadas.
+  res.cookie("oauth_provider", provider, {
+    httpOnly: true,
+    signed: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 10 * 60 * 1000, // 10 minutos
+  });
 
   // Supabase genera la URL de autorización del proveedor OAuth2.
   // redirectTo debe coincidir con la URL de callback registrada en Supabase
@@ -78,7 +102,12 @@ app.get("/auth/callback", async (req: Request, res: Response) => {
   const code = req.query.code as string | undefined;
 
   if (!code) {
-    res.status(400).send("Código de autorización no encontrado en la URL.");
+    const providerError = req.query.error_description || req.query.error;
+    const details = providerError
+      ? ` Detalle del proveedor: ${providerError}`
+      : " Revisa que en Google/GitHub la callback OAuth sea https://<tu-project-ref>.supabase.co/auth/v1/callback y que en Supabase exista http://localhost:3000/auth/callback en Redirect URLs.";
+
+    res.status(400).send("Código de autorización no encontrado en la URL." + details);
     return;
   }
 
@@ -92,6 +121,8 @@ app.get("/auth/callback", async (req: Request, res: Response) => {
     return;
   }
 
+  const loginProvider = parseProvider(req.signedCookies?.oauth_provider);
+
   // Guardamos el access_token en una cookie HTTP-only firmada.
   // HTTP-only: inaccesible desde JavaScript del navegador (mitiga XSS).
   // sameSite "lax": protección básica contra CSRF.
@@ -103,6 +134,18 @@ app.get("/auth/callback", async (req: Request, res: Response) => {
     secure: process.env.NODE_ENV === "production",
     maxAge: 3600 * 1000, // 1 hora en milisegundos
   });
+
+  if (loginProvider) {
+    res.cookie("login_provider", loginProvider, {
+      httpOnly: true,
+      signed: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 3600 * 1000,
+    });
+  }
+
+  res.clearCookie("oauth_provider");
 
   // Redirige al perfil del usuario una vez autenticado
   res.redirect("/profile");
@@ -134,6 +177,12 @@ app.get("/profile", async (req: Request, res: Response) => {
   }
 
   const user = data.user;
+  const cookieProvider = parseProvider(req.signedCookies?.login_provider);
+  const providerToShow =
+    cookieProvider ||
+    (typeof user.app_metadata?.["provider"] === "string"
+      ? user.app_metadata["provider"]
+      : "desconocido");
 
   // Construye una página HTML minimalista con los datos del usuario
   res.send(`
@@ -154,7 +203,7 @@ app.get("/profile", async (req: Request, res: Response) => {
         />
         <h1>${user.user_metadata?.["full_name"] || user.user_metadata?.["name"] || "Usuario"}</h1>
         <p class="email">${user.email || "Sin correo"}</p>
-        <p class="provider">Proveedor: <strong>${user.app_metadata?.["provider"] || "desconocido"}</strong></p>
+        <p class="provider">Proveedor: <strong>${providerToShow}</strong></p>
         <a href="/auth/logout" class="btn btn-outline">Cerrar sesión</a>
       </main>
     </body>
