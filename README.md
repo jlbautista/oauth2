@@ -41,7 +41,7 @@ Usuario ← /profile   ← /auth/callback ←─┘
    ```
    http://localhost:3000/auth/callback
    ```
-4. Copia tu **Project URL** y **anon key** desde **Settings → API**.
+4. Copia tu **Project URL** y **publishable key** desde **Settings → API Keys**.
 
 ### 2. Variables de entorno
 
